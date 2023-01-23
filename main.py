@@ -197,6 +197,12 @@ async def modal_response(ctx, event_type, leave_date: str, leave_type: str, leav
             embeds.add_field(name="請假原因", value=f"{leave_reason}", inline=False)
             embeds.set_footer(text=f"假單序號：{timestamp}")
             result = await channel.send(embeds=embeds)
+            btn_custom_id = interactions.ext.persistence.PersistentCustomID(
+                bot,
+                "btn_revoke_leave",
+                [str(result.id), timestamp],
+            )
+
             db.collection(u'1111-leave').document(timestamp).set({
                 u'date': timestamp,
                 u'name': discord_id,
@@ -206,9 +212,28 @@ async def modal_response(ctx, event_type, leave_date: str, leave_type: str, leav
             db.collection(u'1111-cadre').document(discord_id).update({
                 u'leave_record': firestore.ArrayUnion([timestamp])
             })
+
+            button = interactions.Button(
+                style = interactions.ButtonStyle.DANGER,
+                label = "↻ 撤回",
+                custom_id = str(btn_custom_id)  
+            )
+            await ctx.send("", components=button)
         else:
             await ctx.send("請假不可於當天/逾期請！\n如有急事非請不可，請在 <#1022436666251677737> 表示請假原因。", ephemeral=True)
     else:
         await ctx.send("時間格式不正確，請確認是否為 `MM/DD`", ephemeral=True)
+
+@bot.persistent_component("btn_revoke_leave")
+async def button_response(ctx, payload: list):
+    btn_custom_id, timestamp = payload
+    discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
+    db.collection(u'1111-leave').document(timestamp).delete()
+    db.collection(u'1111-cadre').document(discord_id).update({
+        u'leave_record': firestore.ArrayRemove([timestamp])
+    })
+    await ctx.message.edit(f"已撤回假單")
+    message = await get(bot, interactions.Message, object_id=btn_custom_id)
+    await message.delete()
 
 bot.start()
