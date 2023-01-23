@@ -3,9 +3,11 @@ from firebase_admin import credentials, firestore
 from datetime import datetime as dt
 
 # These are basic inits for discord bot to function corrrectly
+import secret
+env = secret.test
 bot = interactions.Client(
-    token = os.getenv("DISCORD_TOKEN"),
-    default_scope = os.getenv("DISCORD_SCOPE"),
+    token = env.token,
+    default_scope = env.scope,
 )
 bot.load("interactions.ext.persistence")
 from interactions.ext.persistence import keygen
@@ -191,7 +193,7 @@ async def modal_response(ctx, event_type, leave_date: str, leave_type: str, leav
     if leave_date:
         leave_delta = (leave_date - dt.today().date()).days
         if leave_delta > 0: #確保不可在當天或逾期請假
-            channel = await get(bot, interactions.Channel, object_id=<leave_channel>) # Replace <leave_channel> with the actual announcement channel ID
+            channel = await get(bot, interactions.Channel, object_id=env.leave_channel)
             discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
             timestamp = dt.now().isoformat()
             leave_name = list(event_dict.keys())[list(event_dict.values()).index(event_type)]
@@ -337,7 +339,7 @@ async def modal_response(ctx, announcement_type, announcement_title: str, announ
             return
         else:
             role, = roles # Unpack from list
-    channel = await get(bot, interactions.Channel, object_id=1034812177703505973) # Replace <announcement_channel> with the actual announcement channel ID
+    channel = await get(bot, interactions.Channel, object_id=env.announcement_channel)
     name = list(announcement_dict.keys())[list(announcement_dict.values()).index(announcement_type)]
     msg = f"【{name}】\n" +\
         f"標題：{announcement_title}\n" +\

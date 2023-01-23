@@ -25,6 +25,7 @@ sftp-config.json
 
 # TKUAIIC bot install & usage
 credentials.json
+secret.py
 
 # Building & testing
 npm-debug.log
