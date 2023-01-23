@@ -48,9 +48,11 @@ async def verify(ctx):
     await ctx.popup(modal)
 
 @bot.modal("verify_modal")
-async def modal_response(ctx, name: str, studentid: int):
-    discord_account = f'{ctx.author.username}#{ctx.author.discriminator}'
-    logging.info(f"Discord Account: {discord_account} | Name: {name} | StudentID: {studentid}")
+async def modal_response(ctx, name: str, student_id: int):
+    discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
+    logging.info(f"Discord Account: {discord_id} | Name: {name} | StudentID: {student_id}")
+    
+    ####### 尚未完成將Document ID換成Discord ID的自動取得身分組功能！
     doc_ref = check_df(u"1111-member", name)
     entry = doc_ref.get()
     # Authentication logic(check if name and student ID matches the record in database)
@@ -58,7 +60,7 @@ async def modal_response(ctx, name: str, studentid: int):
         await ctx.send(f"✅社員核對通過，請稍後...", ephemeral=True)
         # Add the user's discord account name into the database
         doc_ref.update({
-            u'discord_account': discord_account
+            u'discord_id': discord_id
         })
         logging.info(f" - Successfully Updated Discord Account for {name}")
         # Gets role ID
@@ -75,7 +77,7 @@ async def modal_response(ctx, name: str, studentid: int):
         if entry.exists and entry.to_dict()['student_id'] == studentid:
             # Add the user's discord account name into the database
             doc_ref.update({
-                u'discord_account': f'{ctx.author.username}#{ctx.author.discriminator}'
+                u'discord_id': f'{ctx.author.username}#{ctx.author.discriminator}'
             })
             await ctx.send(f"已將您的Discord帳號登錄至資料庫，謝謝！", ephemeral=True)
             logging.info(" - Successfully Update Discord Account for {name}")
