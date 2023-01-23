@@ -6,10 +6,16 @@ bot = interactions.Client(
     token = os.getenv("DISCORD_TOKEN"),
     default_scope = os.getenv("DISCORD_SCOPE"),
 )
+bot.load("interactions.ext.persistence")
+from interactions.ext.persistence import keygen
+keygen()
+from interactions.utils.get import get
+
 # These are basic inits for firestore
 cred = credentials.Certificate("credentials.json") # <-Not for public
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
 # These are basic inits for logging
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -20,6 +26,20 @@ logging.basicConfig(
 def check_df(collection, name):
     doc_ref = db.collection(collection).document(name)
     return doc_ref
+
+def id_to_name(discord_id, collection:str):
+    try:
+        entry = check_df(collection, discord_id).get()
+        if entry.exists :
+            return entry.to_dict()['name']
+    except:
+        print("Somethings wrong with id_to_name")
+
+def validate_date(date_text):
+    try:
+        return dt.strptime(f'{date_text}', '%Y-%m-%d').date()
+    except:
+        return False
 #----------------------Main Code Starts Here----------------------
 name = interactions.TextInput(
     style=interactions.TextStyleType.SHORT,
@@ -89,5 +109,106 @@ async def modal_response(ctx, name: str, student_id: int):
                 return
     except:
         await ctx.send(f"驗證有誤，請確認姓名及學號是否正確。如有疑問，請透過 <#1024724411074498591> 頻道回報問題，謝謝！", ephemeral=True)
+
+#----------------------幹部----------------------
+@bot.command()
+async def eip(ctx: interactions.CommandContext):
+    """【幹部專用】社團資訊入口 - Club Information Portal"""
+    pass
+
+event_dict = {
+    "例會": "meeting",
+    "社課": "event",
+    "檢討會": "AAR",
+    "專案": "side-project"
+}
+
+#-----------請假-----------
+@eip.subcommand()
+async def leave(ctx):
+    """請假"""
+    leave_menu = interactions.SelectMenu(
+        custom_id="leave_menu",
+        options=[
+            interactions.SelectOption(label="例會", value="例會"),
+            interactions.SelectOption(label="社課", value="社課"),
+            interactions.SelectOption(label="檢討會", value="檢討會"),
+            interactions.SelectOption(label="專案", value="專案"),
+        ],
+    )
+    discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
+    entry = check_df(u"1111-cadre", discord_id).get()
+    if entry.exists:
+        await ctx.send("請選擇欲請假的活動類型", components=leave_menu)
+    else:
+        await ctx.send(":warning: 這個功能僅限現任幹部使用", ephemeral=True)
+
+@bot.component("leave_menu")
+async def callback(ctx, response: str):
+    event_selection, *_ = response
+    custom_id = interactions.ext.persistence.PersistentCustomID(
+        bot,
+        "leave_form",
+        event_selection
+    )
+    modal = interactions.Modal(
+        title=f"【{event_selection}】請假單",
+        components=[
+            interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="請假時間（YYYY-MM-DD）",
+                custom_id="leave_date",
+                min_length=10,
+                max_length=10
+            ),
+            interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="請假類別（按學校分類）",
+                custom_id="leave_type",
+            ),
+            interactions.TextInput(
+                style=interactions.TextStyleType.PARAGRAPH,
+                label="請假原因",
+                custom_id="leave_reason"
+            )
+            # type: ignore
+        ],
+        custom_id = str(custom_id)
+    )
+    await ctx.popup(modal)
+    await ctx.message.delete()
+
+@bot.persistent_modal("leave_form")
+async def modal_response(ctx, event_type, leave_date: str, leave_type: str, leave_reason: str):
+    leave_date = validate_date(leave_date)
+    if leave_date:
+        leave_delta = (leave_date - dt.today().date()).days
+        if leave_delta > 0: #確保不可在當天或逾期請假
+            channel = await get(bot, interactions.Channel, object_id=env.leave_channel)
+            discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
+            timestamp = dt.now().isoformat()
+            leave_name = list(event_dict.keys())[list(event_dict.values()).index(event_type)]
+            # logging.info(f"Leave =>")
+            embeds=interactions.Embed(title=f"【{leave_name}】請假單", color=0x00bfff)
+            embeds.set_author(name=f"{id_to_name(discord_id, '1111-cadre')}", icon_url=f"{ctx.author.avatar_url}?size=1024")
+            embeds.set_thumbnail(url="https://i.ibb.co/6BK3PR9/image.png")
+            embeds.add_field(name="假別", value=f"{leave_type}\a\a\a\a", inline=True)
+            embeds.add_field(name="時間", value=f"{leave_date}", inline=True)
+            embeds.add_field(name="請假原因", value=f"{leave_reason}", inline=False)
+            embeds.set_footer(text=f"假單序號：{timestamp}")
+            result = await channel.send(embeds=embeds)
+            db.collection(u'1111-leave').document(timestamp).set({
+                u'date': timestamp,
+                u'name': discord_id,
+                u'type': leave_type,
+                u'reason': leave_reason
+            })
+            db.collection(u'1111-cadre').document(discord_id).update({
+                u'leave_record': firestore.ArrayUnion([timestamp])
+            })
+        else:
+            await ctx.send("請假不可於當天/逾期請！\n如有急事非請不可，請在 <#1022436666251677737> 表示請假原因。", ephemeral=True)
+    else:
+        await ctx.send("時間格式不正確，請確認是否為 `MM/DD`", ephemeral=True)
 
 bot.start()
