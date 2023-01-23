@@ -1,5 +1,6 @@
 import interactions, os, firebase_admin, logging
 from firebase_admin import credentials, firestore
+from datetime import datetime as dt
 
 # These are basic inits for discord bot to function corrrectly
 bot = interactions.Client(
@@ -38,6 +39,12 @@ def id_to_name(discord_id, collection:str):
 def validate_date(date_text):
     try:
         return dt.strptime(f'{date_text}', '%Y-%m-%d').date()
+    except:
+        return False
+
+def validate_time(time_text):
+    try:
+        return dt.strptime(f'{time_text}', '%H:%M').strftime("%H:%M")
     except:
         return False
 #----------------------Main Code Starts Here----------------------
@@ -288,6 +295,18 @@ async def callback(ctx, response: str):
                 required=False
             ),
             interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="時間 HH:MM（選填）",
+                custom_id="announcement_time",
+                required=False
+            ),
+            interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="地點（選填）",
+                custom_id="announcement_location",
+                required=False
+            ),
+            interactions.TextInput(
                 style=interactions.TextStyleType.PARAGRAPH,
                 label="內容",
                 custom_id="announcement_content"
@@ -300,11 +319,16 @@ async def callback(ctx, response: str):
     await ctx.message.delete()
 
 @bot.persistent_modal("announcement_form")
-async def modal_response(ctx, announcement_type, announcement_title: str, announcement_target: str, announcement_date:str, announcement_content: str):
+async def modal_response(ctx, announcement_type, announcement_title: str, announcement_target: str, announcement_date:str, announcement_time:str, announcement_location:str, announcement_content: str):
     if announcement_date:
         announcement_date = validate_date(announcement_date)
         if not announcement_date:
             await ctx.send("日期格式不正確，請確認是否為 `YYYY-MM-DD`", ephemeral=True)
+            return
+    if announcement_time:
+        announcement_time = validate_time(announcement_time)
+        if not announcement_time:
+            await ctx.send("時間格式不正確，請確認是否為 `HH-MM`", ephemeral=True)
             return
     if announcement_target:
         roles = interactions.search_iterable(ctx.guild.roles, name=announcement_target)
@@ -319,6 +343,8 @@ async def modal_response(ctx, announcement_type, announcement_title: str, announ
         f"標題：{announcement_title}\n" +\
         (f"對象：{role.mention}\n" if announcement_target else "") +\
         (f"日期：{announcement_date}\n" if announcement_date else "") +\
+        (f"時間：{announcement_time}\n" if announcement_time else "") +\
+        (f"地點：{announcement_location}\n" if announcement_location else "") +\
         f"內容：{announcement_content}"
     await channel.send(msg)
     await ctx.send("已發公告")
