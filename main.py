@@ -198,7 +198,7 @@ async def modal_response(ctx, event_type, leave_date: str, leave_type: str, leav
             # logging.info(f"Leave =>")
             embeds=interactions.Embed(title=f"【{leave_name}】請假單", color=0x00bfff)
             embeds.set_author(name=f"{id_to_name(discord_id, '1111-cadre')}", icon_url=f"{ctx.author.avatar_url}?size=1024")
-            embeds.set_thumbnail(url="https://i.ibb.co/6BK3PR9/image.png")
+            embeds.set_thumbnail(url="https://media.discordapp.net/attachments/1031820876032782346/1056797437676769330/3e5d8d13beec7333.png")
             embeds.add_field(name="假別", value=f"{leave_type}\a\a\a\a", inline=True)
             embeds.add_field(name="時間", value=f"{leave_date}", inline=True)
             embeds.add_field(name="請假原因", value=f"{leave_reason}", inline=False)
