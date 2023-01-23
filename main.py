@@ -191,7 +191,7 @@ async def modal_response(ctx, event_type, leave_date: str, leave_type: str, leav
     if leave_date:
         leave_delta = (leave_date - dt.today().date()).days
         if leave_delta > 0: #確保不可在當天或逾期請假
-            channel = await get(bot, interactions.Channel, object_id=env.leave_channel)
+            channel = await get(bot, interactions.Channel, object_id=<leave_channel>) # Replace <leave_channel> with the actual announcement channel ID
             discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
             timestamp = dt.now().isoformat()
             leave_name = list(event_dict.keys())[list(event_dict.values()).index(event_type)]
@@ -337,7 +337,7 @@ async def modal_response(ctx, announcement_type, announcement_title: str, announ
             return
         else:
             role, = roles # Unpack from list
-    channel = await get(bot, interactions.Channel, object_id=<announcement_channel>) # Replace <announcement_channel> with the actual announcement channel ID
+    channel = await get(bot, interactions.Channel, object_id=1034812177703505973) # Replace <announcement_channel> with the actual announcement channel ID
     name = list(announcement_dict.keys())[list(announcement_dict.values()).index(announcement_type)]
     msg = f"【{name}】\n" +\
         f"標題：{announcement_title}\n" +\
