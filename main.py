@@ -149,7 +149,7 @@ async def callback(ctx, response: str):
     custom_id = interactions.ext.persistence.PersistentCustomID(
         bot,
         "leave_form",
-        event_selection
+        event_dict[event_selection], # Persistence extension will crash when encountering Chinese, [see here](https://discord.com/channels/789032594456576001/1037090379935256576/1037386313592229928)
     )
     modal = interactions.Modal(
         title=f"【{event_selection}】請假單",
