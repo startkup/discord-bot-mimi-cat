@@ -236,4 +236,92 @@ async def button_response(ctx, payload: list):
     message = await get(bot, interactions.Message, object_id=btn_custom_id)
     await message.delete()
 
+#-----------公告-----------
+announcement_dict = {
+    "活動公告": "event",
+    "會議通知": "meeting"
+}
+
+@eip.subcommand()
+async def announcement(ctx):
+    """公告"""
+    announcement_menu = interactions.SelectMenu(
+        custom_id="announcement_menu",
+        options=[
+            interactions.SelectOption(label="活動公告", value="活動公告"),
+            interactions.SelectOption(label="會議通知", value="會議通知"),
+        ],
+    )
+    discord_id = f'{ctx.author.username}#{ctx.author.discriminator}'
+    entry = check_df(u"1111-cadre", discord_id).get()
+    if entry.exists:
+        await ctx.send("請選擇欲公告類型", components=announcement_menu)
+    else:
+        await ctx.send(":warning: 這個功能僅限現任幹部使用", ephemeral=True)
+
+@bot.component("announcement_menu")
+async def callback(ctx, response: str):
+    announcement_selection, *_ = response
+    custom_id = interactions.ext.persistence.PersistentCustomID(
+        bot,
+        "announcement_form",
+        announcement_dict[announcement_selection],
+    )
+    modal = interactions.Modal(
+        title=f"【{announcement_selection}】",
+        components=[
+            interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="標題",
+                custom_id="announcement_title"
+            ),
+            interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="對象（選填）",
+                custom_id="announcement_target",
+                required=False
+            ),
+            interactions.TextInput(
+                style=interactions.TextStyleType.SHORT,
+                label="日期 YYYY-MM-DD（選填）",
+                custom_id="announcement_date",
+                required=False
+            ),
+            interactions.TextInput(
+                style=interactions.TextStyleType.PARAGRAPH,
+                label="內容",
+                custom_id="announcement_content"
+            )
+            # type: ignore
+        ],
+        custom_id = str(custom_id)
+    )
+    await ctx.popup(modal)
+    await ctx.message.delete()
+
+@bot.persistent_modal("announcement_form")
+async def modal_response(ctx, announcement_type, announcement_title: str, announcement_target: str, announcement_date:str, announcement_content: str):
+    if announcement_date:
+        announcement_date = validate_date(announcement_date)
+        if not announcement_date:
+            await ctx.send("日期格式不正確，請確認是否為 `YYYY-MM-DD`", ephemeral=True)
+            return
+    if announcement_target:
+        roles = interactions.search_iterable(ctx.guild.roles, name=announcement_target)
+        if not roles:
+            await ctx.send("標記身分組不正確，請再次核對名稱。", ephemeral=True)
+            return
+        else:
+            role, = roles # Unpack from list
+    channel = await get(bot, interactions.Channel, object_id=<announcement_channel>) # Replace <announcement_channel> with the actual announcement channel ID
+    name = list(announcement_dict.keys())[list(announcement_dict.values()).index(announcement_type)]
+    msg = f"【{name}】\n" +\
+        f"標題：{announcement_title}\n" +\
+        (f"對象：{role.mention}\n" if announcement_target else "") +\
+        (f"日期：{announcement_date}\n" if announcement_date else "") +\
+        f"內容：{announcement_content}"
+    await channel.send(msg)
+    await ctx.send("已發公告")
+    await ctx.message.delete()
+
 bot.start()
