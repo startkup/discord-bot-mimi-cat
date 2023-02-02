@@ -4,7 +4,7 @@ from datetime import datetime as dt
 
 # These are basic inits for discord bot to function corrrectly
 import secret
-env = secret.test
+env = secret.prod
 bot = interactions.Client(
     token = env.token,
     default_scope = env.scope,
@@ -116,6 +116,8 @@ async def modal_response(ctx, name: str, student_id: int):
                 await ctx.send(f"已將您的Discord帳號登錄至資料庫，謝謝！", ephemeral=True)
                 logging.info(" - Successfully Update Discord Account for {name}")
                 return
+            else:
+                await ctx.send(f"驗證有誤，請確認姓名及學號是否正確。如有疑問，請透過 <#1024724411074498591> 頻道回報問題，謝謝！", ephemeral=True)
     except:
         await ctx.send(f"驗證有誤，請確認姓名及學號是否正確。如有疑問，請透過 <#1024724411074498591> 頻道回報問題，謝謝！", ephemeral=True)
 
@@ -286,12 +288,6 @@ async def callback(ctx, response: str):
             ),
             interactions.TextInput(
                 style=interactions.TextStyleType.SHORT,
-                label="對象（選填）",
-                custom_id="announcement_target",
-                required=False
-            ),
-            interactions.TextInput(
-                style=interactions.TextStyleType.SHORT,
                 label="日期 YYYY-MM-DD（選填）",
                 custom_id="announcement_date",
                 required=False
@@ -321,7 +317,7 @@ async def callback(ctx, response: str):
     await ctx.message.delete()
 
 @bot.persistent_modal("announcement_form")
-async def modal_response(ctx, announcement_type, announcement_title: str, announcement_target: str, announcement_date:str, announcement_time:str, announcement_location:str, announcement_content: str):
+async def modal_response(ctx, announcement_type, announcement_title: str, announcement_date:str, announcement_time:str, announcement_location:str, announcement_content: str):
     if announcement_date:
         announcement_date = validate_date(announcement_date)
         if not announcement_date:
@@ -332,22 +328,14 @@ async def modal_response(ctx, announcement_type, announcement_title: str, announ
         if not announcement_time:
             await ctx.send("時間格式不正確，請確認是否為 `HH-MM`", ephemeral=True)
             return
-    if announcement_target:
-        roles = interactions.search_iterable(ctx.guild.roles, name=announcement_target)
-        if not roles:
-            await ctx.send("標記身分組不正確，請再次核對名稱。", ephemeral=True)
-            return
-        else:
-            role, = roles # Unpack from list
     channel = await get(bot, interactions.Channel, object_id=env.announcement_channel)
     name = list(announcement_dict.keys())[list(announcement_dict.values()).index(announcement_type)]
     msg = f"【{name}】\n" +\
         f"標題：{announcement_title}\n" +\
-        (f"對象：{role.mention}\n" if announcement_target else "") +\
         (f"日期：{announcement_date}\n" if announcement_date else "") +\
         (f"時間：{announcement_time}\n" if announcement_time else "") +\
         (f"地點：{announcement_location}\n" if announcement_location else "") +\
-        f"內容：{announcement_content}"
+        f"主持人：{announcement_content}"
     await channel.send(msg)
     await ctx.send("已發公告")
     await ctx.message.delete()
