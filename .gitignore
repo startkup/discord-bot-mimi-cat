@@ -22,8 +22,6 @@ sublime-*
 sftp-config.json
 ## Visual Studio Code
 *.vscode/
-##Python
-__pycache__/
 
 # TKUAIIC bot install & usage
 credentials.json
@@ -31,9 +29,12 @@ secret.py
 tests/
 
 # Building & testing
+## NPM
 npm-debug.log
 node_modules/
 .eslintcache
+## Python
+__pycache__/
 
 # Operating systems
 ## Mac OS X
